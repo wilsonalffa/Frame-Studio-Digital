@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frame Studio Digital — Ferramenta de Impressão</title>
+  <meta name="description"
+    content="Ferramenta profissional para verificar qualidade de impressão, dividir imagens em painéis, aplicar sangria e simular quadros na parede. Frame Studio Digital.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:title" content="Frame Studio Digital — Ferramenta de Impressão">
+  <meta property="og:description" content="Verifique qualidade, divida painéis, simule moldura e passepartout.">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='FastFrame.png') }}">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/styles.css') }}">
+  <style>
+    .num-parts-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap
+    }
+
+    .num-parts-row label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray);
+      font-weight: 600
+    }
+
+    .num-parts-row input[type=number] {
+      width: 72px;
+      background: var(--cream2);
+      border: 1px solid var(--border);
+      color: var(--brown);
+      font-size: 15px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      outline: none;
+      font-family: 'Avenir', 'Nunito', sans-serif
+    }
+
+    .num-parts-row input:focus {
+      border-color: var(--gold);
+      background: var(--white)
+    }
+
+    .orient-btns {
+      display: flex;
+      gap: 6px
+    }
+
+    .orient-btn {
+      padding: 7px 12px;
+      background: var(--cream2);
+      border: 1px solid var(--border2);
+      color: var(--gray2);
+      font-family: 'Avenir', 'Nunito', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all .2s
+    }
+
+    .orient-btn.active {
+      background: var(--gold);
+      color: var(--white);
+      border-color: var(--gold)
+    }
+
+    .part-size-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px
+    }
+
+    .part-size-table th {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray);
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border2);
+      font-weight: 600;
+      text-align: left
+    }
+
+    .part-size-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border2)
+    }
+
+    .part-size-table td input {
+      width: 68px;
+      background: var(--cream2);
+      border: 1px solid var(--border);
+      color: var(--brown);
+      font-size: 12px;
+      padding: 4px 6px;
+      border-radius: 3px;
+      font-family: 'Avenir', 'Nunito', sans-serif
+    }
+
+    .part-size-table td input:focus {
+      border-color: var(--gold);
+      outline: none;
+      background: var(--white)
+    }
+
+    .pp-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer
+    }
+
+    .pp-toggle input[type=checkbox] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--gold);
+      cursor: pointer
+    }
+
+    .pp-swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color .2s;
+      flex-shrink: 0
+    }
+
+    .pp-swatch.active,
+    .pp-swatch:hover {
+      border-color: var(--gold)
+    }
+
+    .preview-size-label {
+      font-family: 'Avenir Next', 'Nunito', Georgia, serif;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--brown);
+      text-align: center;
+      margin-bottom: 6px
+    }
+
+    .room-thumb {
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 2px solid var(--border2);
+      cursor: pointer;
+      transition: all .25s;
+      aspect-ratio: 4/3;
+      background: var(--cream2)
+    }
+
+    .room-thumb:hover {
+      border-color: var(--gold);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(184, 144, 60, .15)
+    }
+
+    .room-thumb.active {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px rgba(184, 144, 60, .25)
+    }
+
+    .room-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block
+    }
+
+    .room-thumb.no-img {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 6px
+    }
+
+    .room-thumb.no-img::before {
+      content: '🏠';
+      font-size: 28px;
+      opacity: .4
+    }
+
+    .room-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(26, 48, 81, .75));
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 18px 8px 6px;
+      text-align: center
+    }
+
+    .room-thumb.no-img .room-label {
+      position: static;
+      background: none;
+      color: var(--gray);
+      padding: 0;
+      font-size: 10px
+    }
+
+    @media(max-width:700px) {
+      .room-grid {
+        grid-template-columns: repeat(2, 1fr) !important
+      }
+    }
+
+    .enh-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px
+    }
+
+    @media(max-width:600px) {
+      .enh-grid {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .enh-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gray);
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 6px
+    }
+
+    .enh-slider-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px
+    }
+
+    @media(max-width:700px) {
+      .enh-slider-group {
+        grid-template-columns: 1fr
+      }
+    }
+
+    .progress-bar-wrap {
+      margin-top: 10px;
+      display: none
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden
+    }
+
+    .progress-bar-inner {
+      height: 100%;
+      background: var(--gold);
+      border-radius: 3px;
+      transition: width .2s;
+      width: 0%
+    }
+
+    .frame-stage {
+      background: #E8EDF2;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      min-height: 480px
+    }
+
+    #frameCanvas {
+      max-width: 100%;
+      max-height: 560px;
+      display: block;
+      border-radius: 2px
+    }
+
+    .frame-color-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all .2s;
+      flex-shrink: 0
+    }
+
+    .frame-color-btn:hover,
+    .frame-color-btn.active {
+      border-color: var(--gold);
+      transform: scale(1.1)
+    }
+  </style>
+  <style id="mobile-extra">
+    /* ── Mobile hamburger ── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      padding: 8px;
+      border: none;
+      background: none;
+      z-index: 200
+    }
+
+    .hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--brown);
+      border-radius: 2px;
+      transition: all .3s
+    }
+
+    .hamburger.open span:nth-child(1) {
+      transform: rotate(45deg) translate(5px, 5px)
+    }
+
+    .hamburger.open span:nth-child(2) {
+      opacity: 0
+    }
+
+    .hamburger.open span:nth-child(3) {
+      transform: rotate(-45deg) translate(5px, -5px)
+    }
+
+    .mobile-nav {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(26, 48, 81, .97);
+      z-index: 150;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px
+    }
+
+    .mobile-nav.open {
+      display: flex
+    }
+
+    .mobile-nav-item {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .7);
+      padding: 16px 32px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: 'Avenir', 'Nunito', sans-serif;
+      transition: color .2s;
+      width: 100%;
+      text-align: center
+    }
+
+    .mobile-nav-item.active,
+    .mobile-nav-item:hover {
+      color: #fff
+    }
+
+    .mobile-nav-item.active {
+      color: var(--gold)
+    }
+
+    .mobile-nav-close {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      font-size: 28px;
+      color: rgba(255, 255, 255, .6);
+      cursor: pointer;
+      background: none;
+      border: none;
+      line-height: 1
+    }
+
+    /* ── Tab-bar scroll mobile ── */
+    .tab-bar {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      flex-wrap: nowrap;
+      white-space: nowrap
+    }
+
+    .tab-bar::-webkit-scrollbar {
+      display: none
+    }
+
+    .tab-btn {
+      flex-shrink: 0
+    }
+
+    /* ── Loading overlay ── */
+    .ff-loading {
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 48, 81, .7);
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px
+    }
+
+    .ff-loading.show {
+      display: flex
+    }
+
+    .ff-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255, 255, 255, .2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: ff-spin .8s linear infinite
+    }
+
+    @keyframes ff-spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .ff-loading-msg {
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 1px
+    }
+
+    /* ── Input validation ── */
+    .field input.invalid,
+    .num-parts-row input.invalid {
+      border-color: #B22222 !important;
+      background: #FEF0F0 !important
+    }
+
+    .field input.invalid:focus,
+    .num-parts-row input.invalid:focus {
+      box-shadow: 0 0 0 3px rgba(178, 34, 34, .15) !important
+    }
+
+    .validation-msg {
+      font-size: 11px;
+      color: #B22222;
+      margin-top: 4px;
+      display: none
+    }
+
+    .validation-msg.show {
+      display: block
+    }
+
+    /* ── Logout btn ── */
+    .logout-btn {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray);
+      background: none;
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all .2s;
+      white-space: nowrap
+    }
+
+    .logout-btn:hover {
+      color: var(--brown);
+      border-color: var(--brown)
+    }
+
+    /* ── Responsive header ── */
+    @media(max-width:900px) {
+      header {
+        padding: 0 24px
+      }
+
+      nav {
+        display: none
+      }
+
+      .header-cta {
+        display: none
+      }
+
+      .logout-btn-desktop {
+        display: none
+      }
+
+      .hamburger {
+        display: flex
+      }
+
+      .hinner {
+        height: 60px
+      }
+    }
+
+    @media(max-width:600px) {
+      .topbar {
+        display: none
+      }
+
+      .hero {
+        padding: 32px 24px
+      }
+
+      .hero h1 {
+        font-size: 24px
+      }
+
+      .page {
+        padding: 20px 16px 48px
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Mobile nav overlay -->
+  <div class="mobile-nav" id="mobileNav">
+    <button class="mobile-nav-close" onclick="toggleMobileNav()">✕</button>
+    <button class="mobile-nav-item active" data-mobilenav="quadros"
+      onclick="switchTab('quadros',null);toggleMobileNav()">🖼 Imagem &amp; Qualidade</button>
+    <button class="mobile-nav-item" data-mobilenav="canvas" onclick="switchTab('canvas',null);toggleMobileNav()">✂
+      Divisão &amp; Sangria</button>
+    <button class="mobile-nav-item" data-mobilenav="simquadro"
+      onclick="switchTab('simquadro',null);toggleMobileNav()">🪞 Simulação de Quadros</button>
+    <button class="mobile-nav-item" data-mobilenav="simulador"
+      onclick="switchTab('simulador',null);toggleMobileNav()">🏠 Simulação de Ambiente</button>
+    
+  <a href="{{ url_for('logout') }}" style="color:rgba(255,255,255,.5);font-size:13px;margin-top:32px;text-decoration:none;letter-spacing:1px">Sair da conta</a>
+  </div>
+
+  <!-- Loading overlay -->
+  <div class="ff-loading" id="ffLoading">
+    <div class="ff-spinner"></div>
+    <div class="ff-loading-msg" id="ffLoadingMsg">Processando…</div>
+  </div>
+
+  <div class="topbar">
+    <span>📍 Av Barão de Tatuí, 1584 Vergueiro — Sorocaba SP</span>
+    <span><a href="tel:15991355747">📞 (15) 99135-5747</a> &nbsp;·&nbsp; <a href="mailto:sorocaba@fastframe.com.br">✉ sorocaba@fastframe.com.br</a></span>
+  </div>
+
+  <header>
+    <div class="hinner">
+      <div class="logo-wrap">
+        <img class="logo-icon" src="{{ url_for('static', filename='FastFrame.png') }}" alt="Fast Frame Logo">
+      </div>
+      <nav>
+        <button class="nav-item active" data-nav="quadros" onclick="switchTab('quadros',this)">Imagem &amp;
+          Qualidade</button>
+        <button class="nav-item" data-nav="canvas" onclick="switchTab('canvas',this)">Divisão &amp; Sangria</button>
+        <button class="nav-item" data-nav="simquadro" onclick="switchTab('simquadro',this)">Simulação de
+          Quadros</button>
+        <button class="nav-item" data-nav="simulador" onclick="switchTab('simulador',this)">Simulação de
+          Ambiente</button>
+    {%- if false -%}<button class="nav-item" data-nav="assistente" onclick="switchTab('assistente',this)" style="color:var(--gold)">🤖 Assistente IA</button>{%- endif -%}
+      </nav>
+      <div style="display:flex;align-items:center;gap:10px">
+        <!-- BOTAO ORCAMENTO - desabilitado (uso futuro)
+      <button class="header-cta" onclick="abrirOrcamento()">Fazer Orçamento</button>
+      -->
+        <a href="{{ url_for('logout') }}" class="logout-btn logout-btn-desktop">Sair</a>
+        <button class="hamburger" id="hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  
+  <div class="hero">
+    <div style="max-width:1100px;margin:0 auto">
+      <div class="hero-label">Ferramenta Profissional</div>
+      <h1>Sua Foto no Tamanho<br><em>Certo para Imprimir</em></h1>
+      <p>Verifique qualidade, divida em painéis, visualize moldura e passepartout, e simule o quadro na sua parede.</p>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-nav="quadros" onclick="switchTab('quadros',this)">🖼 Imagem &amp;
+      Qualidade</button>
+    <button class="tab-btn" data-nav="canvas" onclick="switchTab('canvas',this)">✂ Divisão &amp; Sangria</button>
+    <button class="tab-btn" data-nav="simquadro" onclick="switchTab('simquadro',this)">🪞 Simulação de Quadros</button>
+    <button class="tab-btn" data-nav="simulador" onclick="switchTab('simulador',this)">🏠 Simulação de Ambiente</button>
+    {%- if false -%}<button class="tab-btn" data-nav="assistente" onclick="switchTab('assistente',this)" style="color:var(--gold);font-weight:800">🤖 Assistente IA</button>{%- endif -%}
+  </div>
+
+  <!-- IMAGEM & QUALIDADE -->
+  <div class="section active" id="tab-quadros">
+    <div class="page">
+      <div class="sh">
+        <h2>Imagem &amp; Qualidade para Impressão</h2>
+        <p>Carregue sua imagem e veja em segundos se ela está boa para o tamanho de quadro que você deseja.</p>
+      </div>
+      <div id="qUpload" class="upload-box" onclick="document.getElementById('qFile').click()"
+        ondragover="dov(event,'qUpload')" ondragleave="dol(event,'qUpload')" ondrop="dod(event,'qUpload','q')">
+        <div class="drag-layer">📂 Solte o arquivo aqui</div>
+        <div class="uicon">🖼️</div>
+        <div class="utitle">Selecione uma imagem ou PDF</div>
+        <div class="uhint">JPG · PNG · TIFF · WEBP · HEIC · PDF · BMP · GIF · AVIF</div>
+        <input type="file" id="qFile" accept="image/*,.pdf,image/heic,image/heif" onchange="loadQ(event)">
+      </div>
+      <div id="qThumb" style="display:none"></div>
+      <div id="qResults" style="display:none">
+        <div class="cards">
+          <div class="card">
+            <div class="card-h">Qualidade Geral</div>
+            <div id="imgQuality"></div>
+            <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border2)">
+              <div
+                style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);margin-bottom:6px;font-weight:600">
+                Dimensões originais</div>
+              <div id="pxDisp"
+                style="font-family:'Avenir Next','Nunito',Georgia,serif;font-size:22px;font-weight:500;color:var(--brown)">
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">Maior Tamanho Recomendado</div>
+            <div id="maxSize"></div>
+            <div class="info-box" style="margin-top:14px">
+              <p>Acima deste tamanho a imagem pode ficar <strong>borrada ou com serrilhado</strong> ao imprimir.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">Verificar um Tamanho Específico</div>
+            <p style="font-size:13px;color:var(--gray);margin-bottom:4px">Digite o tamanho que você quer:</p>
+            <div class="field-row">
+              <div class="field"><label>Largura (cm)</label><input type="number" id="cW" placeholder="ex: 100" min="1">
+              </div>
+              <div class="field"><label>Altura (cm)</label><input type="number" id="cH" placeholder="ex: 70" min="1">
+              </div>
+              <button class="btn" onclick="checkCustom()">Verificar</button>
+            </div>
+            <div class="cres" id="cRes"></div>
+            <div id="cPreview" style="display:none;margin-top:16px">
+              <div id="previewSizeLabel" class="preview-size-label"></div>
+              <div
+                style="text-align:center;border:1px solid var(--border);border-radius:4px;padding:8px;background:var(--white)">
+                <canvas id="previewCanvas" style="max-width:100%;max-height:200px;border-radius:2px;cursor:pointer"
+                  onclick="openPreviewModal()"></canvas>
+                <div style="font-size:11px;color:var(--gray);margin-top:6px">🔍 Clique para ver em tamanho maior</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h">Tamanhos Populares</div>
+            <table class="stbl">
+              <thead>
+                <tr>
+                  <th>Tamanho</th>
+                  <th style="min-width:100px">Qualidade</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="sugTb"></tbody>
+            </table>
+          </div>
+          <div class="card"
+            style="background:linear-gradient(135deg,#EEF2F8 0%,#F4F7FC 100%);border:2px solid var(--gold);display:flex;flex-direction:column;align-items:center;padding:28px;text-align:center;">
+            <div style="font-size:32px;margin-bottom:12px">✂️</div>
+            <div class="card-h" style="margin-bottom:8px">Pronto para Imprimir?</div>
+            <p style="font-size:13px;color:var(--gray);margin-bottom:14px;line-height:1.6">Divida a imagem em painéis e
+              aplique sangria para impressão em canvas com chassi.</p>
+            <button class="btn" onclick="goToDivisao()">Ir para Divisão &amp; Sangria →</button>
+          </div>
+          <!-- MELHORADOR -->
+          <div class="card" id="enhCard" style="grid-column:1/-1;display:none">
+            <div class="card-h">✨ Melhorador de Imagem</div>
+            <p style="font-size:13px;color:var(--gray);margin-bottom:14px">Aumente a resolução, aplique filtros e ajuste
+              brilho, contraste, nitidez e saturação.</p>
+            <div class="enh-grid" style="margin-bottom:16px">
+              <div>
+                <div class="enh-label">Original</div>
+                <canvas id="enhBefore"
+                  style="max-width:100%;max-height:280px;display:block;border-radius:4px;border:1px solid var(--border)"></canvas>
+                <div id="enhBeforeInfo" style="font-size:11px;color:var(--gray);text-align:center;margin-top:4px"></div>
+              </div>
+              <div>
+                <div class="enh-label">Processada</div>
+                <canvas id="enhAfter"
+                  style="max-width:100%;max-height:280px;display:block;border-radius:4px;border:1px solid var(--border)"></canvas>
+                <div id="enhAfterInfo" style="font-size:11px;color:var(--gray);text-align:center;margin-top:4px"></div>
+              </div>
+            </div>
+            <div class="progress-bar-wrap" id="enhProgress">
+              <div style="font-size:12px;color:var(--gray);margin-bottom:4px" id="enhProgressLabel">Processando…</div>
+              <div class="progress-bar">
+                <div class="progress-bar-inner" id="enhProgressBar"></div>
+              </div>
+            </div>
+            <div style="margin-bottom:14px">
+              <div
+                style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);font-weight:600;margin-bottom:8px">
+                Filtros Rápidos</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+                <button class="stab active" id="filterNone" onclick="setEnhFilter('none',this)">Original</button>
+                <button class="stab" id="filterBW" onclick="setEnhFilter('bw',this)">P&amp;B</button>
+                <button class="stab" id="filterSepia" onclick="setEnhFilter('sepia',this)">Sépia</button>
+                <button class="stab" id="filterVivid" onclick="setEnhFilter('vivid',this)">Vívido</button>
+              </div>
+              <div
+                style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);font-weight:600;margin-bottom:8px">
+                Aumentar Resolução</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="stab active" id="scaleBtn1" onclick="setScale(1,this)">1× Original</button>
+                <button class="stab" id="scaleBtn2" onclick="setScale(2,this)">2× Dobrar</button>
+                <button class="stab" id="scaleBtn3" onclick="setScale(3,this)">3× Triplicar</button>
+                <button class="stab" id="scaleBtn4" onclick="setScale(4,this)">4× Máximo</button>
+              </div>
+              <div id="enhScaleInfo" style="font-size:11px;color:var(--gray);margin-top:6px"></div>
+            </div>
+            <div class="enh-slider-group">
+              <div>
+                <div class="sl-row">
+                  <div class="sl-label">Brilho <span id="brightL">0</span></div>
+                  <input type="range" id="brightS" min="-100" max="100" value="0"
+                    oninput="document.getElementById('brightL').textContent=this.value;applyEnhancement()">
+                </div>
+                <div class="sl-row">
+                  <div class="sl-label">Contraste <span id="contrastL">0</span></div>
+                  <input type="range" id="contrastS" min="-100" max="100" value="0"
+                    oninput="document.getElementById('contrastL').textContent=this.value;applyEnhancement()">
+                </div>
+                <div class="sl-row">
+                  <div class="sl-label">Saturação <span id="satL">0</span></div>
+                  <input type="range" id="satS" min="-100" max="100" value="0"
+                    oninput="document.getElementById('satL').textContent=this.value;applyEnhancement()">
+                </div>
+              </div>
+              <div>
+                <div class="sl-row">
+                  <div class="sl-label">Nitidez <span id="sharpL">0</span></div>
+                  <input type="range" id="sharpS" min="0" max="10" value="0"
+                    oninput="document.getElementById('sharpL').textContent=this.value;applyEnhancement()">
+                </div>
+                <div class="sl-row">
+                  <div class="sl-label">Suavização <span id="noiseL">0</span></div>
+                  <input type="range" id="noiseS" min="0" max="5" value="0"
+                    oninput="document.getElementById('noiseL').textContent=this.value;applyEnhancement()">
+                </div>
+                <div class="sl-row">
+                  <div class="sl-label">Temperatura <span id="tempL">0</span></div>
+                  <input type="range" id="tempS" min="-50" max="50" value="0"
+                    oninput="document.getElementById('tempL').textContent=this.value;applyEnhancement()">
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+              <button class="btn" style="flex:1" onclick="applyEnhancement()">🔄 Aplicar</button>
+              <button class="btn dark" style="flex:1" onclick="resetEnhSliders()">↺ Resetar</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn full" style="flex:1;margin-bottom:0" onclick="dlEnhanced('pdf')">⬇ Baixar PDF</button>
+              <button class="btn full" style="flex:1;margin-bottom:0;background:var(--brown2)"
+                onclick="dlEnhanced('jpg')">⬇ Baixar JPEG</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVISÃO & SANGRIA -->
+  <div class="section" id="tab-canvas">
+    <div class="page">
+      <div class="sh">
+        <h2>Divisão em Painéis &amp; Sangria para Chassi</h2>
+        <p>Defina quantas partes, o tamanho de cada painel e a orientação. Aplique sangria para impressão em canvas com
+          chassi.</p>
+      </div>
+      <div id="cUploadBox">
+        <div id="cUpload" class="upload-box" onclick="document.getElementById('cFile').click()"
+          ondragover="dov(event,'cUpload')" ondragleave="dol(event,'cUpload')" ondrop="dod(event,'cUpload','c')">
+          <div class="drag-layer">📂 Solte a imagem aqui</div>
+          <div class="uicon">✂️</div>
+          <div class="utitle">Selecione uma imagem para dividir</div>
+          <div class="uhint">JPG · PNG · TIFF · WEBP · HEIC</div>
+          <input type="file" id="cFile" accept="image/*" onchange="loadC(event)">
+        </div>
+      </div>
+      <div id="cResults" style="display:none">
+        <button class="btn" style="margin-bottom:14px" onclick="goToSelecao()">← Voltar para Seleção</button>
+        <div class="two-col">
+          <div class="canvas-card">
+            <div class="card-h" style="margin-bottom:6px">Pré-visualização</div>
+            <div id="splitSizeLabel"
+              style="font-family:'Avenir Next','Nunito',Georgia,serif;font-size:14px;font-weight:600;color:var(--brown);text-align:center;margin-bottom:10px;min-height:20px">
+            </div>
+            <div class="canvas-stage"><canvas id="splitCanvas"></canvas></div>
+            <div class="dl-row" id="dlRow"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="canvas-card">
+              <div class="card-h">Divisão da Imagem</div>
+              <!-- Botoes de modo - SEMPRE visiveis -->
+              <div style="margin-bottom:12px">
+                <div
+                  style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);font-weight:600;margin-bottom:8px">
+                  Modo de Divisão</div>
+                <div class="orient-btns">
+                  <button class="orient-btn active" id="orientH" onclick="setOrient('h',this)">↔ Horizontal</button>
+                  <button class="orient-btn" id="orientV" onclick="setOrient('v',this)">↕ Vertical</button>
+                  <button class="orient-btn" id="orientG" onclick="setOrient('grid',this)">⊞ Grade</button>
+                </div>
+              </div>
+              <!-- Nº de partes (oculto no modo grade) -->
+              <div class="num-parts-row" id="numPartsRow">
+                <label>Nº de Partes</label>
+                <input type="number" id="numParts" value="1" min="1" max="20" onchange="onNumPartsChange()">
+              </div>
+              <!-- Controles de grade (visível apenas no modo grade) -->
+              <div id="gridControls" style="display:none;margin-bottom:14px">
+                <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+                  <div class="field" style="flex:1;min-width:80px">
+                    <label>Colunas</label>
+                    <input type="number" id="gridCols" value="2" min="1" max="10"
+                      style="width:100%;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:15px;padding:8px 10px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif"
+                      onchange="onNumPartsChange()">
+                  </div>
+                  <div class="field" style="flex:1;min-width:80px">
+                    <label>Linhas</label>
+                    <input type="number" id="gridRows" value="2" min="1" max="10"
+                      style="width:100%;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:15px;padding:8px 10px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif"
+                      onchange="onNumPartsChange()">
+                  </div>
+                  <div style="font-size:11px;color:var(--gray);padding-bottom:10px">ex: 2×2 = 4 quadros</div>
+                </div>
+              </div>
+              <div
+                style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);font-weight:600;margin-bottom:6px">
+                Tamanho Total (cm)</div>
+              <div class="field-row" style="margin-top:0">
+                <div class="field"><label>Largura</label><input type="number" id="totalW" placeholder="ex: 120" min="1">
+                </div>
+                <div class="field"><label>Altura</label><input type="number" id="totalH" placeholder="ex: 60" min="1">
+                </div>
+                <button class="btn" onclick="applyDimensions()">✓ Aplicar</button>
+              </div>
+            </div>
+            <div class="canvas-card" id="partSizesCard" style="display:none">
+              <div class="card-h">Tamanho de Cada Parte (cm)</div>
+              <p style="font-size:12px;color:var(--gray);margin-bottom:8px">Ajuste cada painel individualmente.</p>
+              <table class="part-size-table">
+                <thead>
+                  <tr>
+                    <th>Parte</th>
+                    <th>Largura</th>
+                    <th>Altura</th>
+                  </tr>
+                </thead>
+                <tbody id="partSizesTbody"></tbody>
+              </table>
+              <button class="btn" style="margin-top:10px;width:100%" onclick="applyPartSizes()">Aplicar
+                Composição</button>
+            </div>
+            <div class="canvas-card">
+              <div class="card-h">Sangria para Chassi</div>
+              <p style="font-size:13px;color:var(--brown3);line-height:1.8;margin-bottom:14px">
+                Adiciona <strong style="color:var(--gold)">5cm de borda espelhada</strong> em todos os lados.
+              </p>
+              <button class="btn full" onclick="applyBleed()">⚙ Aplicar Sangria</button>
+              <button class="btn full"
+                style="background:var(--cream2);color:var(--brown2);border:1px solid var(--border);margin-bottom:8px"
+                onclick="removeBleed()">✕ Remover Sangria</button>
+              <div style="display:flex;gap:8px;margin-bottom:14px">
+                <button class="dl-btn pri" style="flex:1" onclick="dlBleed('pdf')">⬇ PDF com Sangria</button>
+                <button class="dl-btn" style="flex:1" onclick="dlBleed('jpg')">⬇ JPEG com Sangria</button>
+              </div>
+              <div class="info-box">
+                <p><strong>O que é sangria?</strong> As bordas são dobradas para trás no chassi. A sangria espelha essas
+                  bordas para não perder a imagem principal.</p>
+              </div>
+              <div style="margin-top:16px">
+                <div class="card-h" style="margin-bottom:8px">Informações do arquivo</div>
+                <div id="cInfo" style="font-size:12px;color:var(--gray);line-height:2.1"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULAÇÃO DE QUADROS -->
+  <div class="section" id="tab-simquadro">
+    <div class="page">
+      <div class="sh">
+        <h2>🪞 Simulação de Quadros</h2>
+        <p>Visualize sua imagem com moldura e passepartout. Ajuste espessura, cor e estilo em tempo real.</p>
+      </div>
+      <div id="sqUploadBox">
+        <div id="sqUpload" class="upload-box" onclick="document.getElementById('sqFile').click()"
+          ondragover="dov(event,'sqUpload')" ondragleave="dol(event,'sqUpload')" ondrop="dod(event,'sqUpload','sq')">
+          <div class="drag-layer">📂 Solte a imagem aqui</div>
+          <div class="uicon">🪞</div>
+          <div class="utitle">Selecione uma imagem para simular o quadro</div>
+          <div class="uhint">JPG · PNG · TIFF · WEBP · HEIC</div>
+          <input type="file" id="sqFile" accept="image/*" onchange="loadSQ(event)">
+        </div>
+      </div>
+      <div id="sqResults" style="display:none">
+        <button class="btn" style="margin-bottom:14px" onclick="resetSQ()">← Nova Imagem</button>
+        <div class="two-col">
+          <div class="canvas-card" style="padding:14px">
+            <div class="frame-stage" id="frameStage">
+              <canvas id="frameCanvas"></canvas>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="dl-btn pri" style="flex:1" onclick="dlFrame('pdf')">⬇ PDF</button>
+              <button class="dl-btn" style="flex:1" onclick="dlFrame('jpg')">⬇ JPEG</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="canvas-card">
+              <div class="card-h">Tamanho do Quadro (cm)</div>
+              <div class="field-row" style="margin-top:0">
+                <div class="field"><label>Largura</label>
+                  <input type="number" id="sqW" value="80" min="5" max="300" oninput="renderFrame()"
+                    style="width:100%;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:15px;padding:8px 10px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif">
+                </div>
+                <div class="field"><label>Altura</label>
+                  <input type="number" id="sqH" value="60" min="5" max="300" oninput="renderFrame()"
+                    style="width:100%;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:15px;padding:8px 10px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif">
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--gray);margin-top:8px" id="sqSizeInfo"></div>
+            </div>
+            <div class="canvas-card">
+              <div class="card-h">Moldura</div>
+              <div class="sl-row">
+                <div class="sl-label">Espessura <span id="sqFrameWL">3cm</span></div>
+                <input type="range" id="sqFrameW" min="0" max="15" value="3" step="0.5"
+                  oninput="document.getElementById('sqFrameWL').textContent=this.value+'cm';renderFrame()">
+              </div>
+              <div style="margin-top:8px">
+                <div
+                  style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);font-weight:600;margin-bottom:8px">
+                  Cor da Moldura</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                  <button class="frame-color-btn active" id="sqFc0" style="background:#3C2F1E;border-color:var(--gold)"
+                    onclick="setSQFrameColor('#3C2F1E',0)" title="Marrom Escuro"></button>
+                  <button class="frame-color-btn" id="sqFc1" style="background:#C9A97F"
+                    onclick="setSQFrameColor('#C9A97F',1)" title="Marrom Claro"></button>
+                  <button class="frame-color-btn" id="sqFc2" style="background:#B8903C"
+                    onclick="setSQFrameColor('#B8903C',2)" title="Dourado"></button>
+                  <button class="frame-color-btn" id="sqFc3" style="background:#8A5F2B"
+                    onclick="setSQFrameColor('#8A5F2B',3)" title="Cobre"></button>
+                  <button class="frame-color-btn" id="sqFc4" style="background:#ffffff;border:1px solid #ccc"
+                    onclick="setSQFrameColor('#ffffff',4)" title="Branco"></button>
+                  <button class="frame-color-btn" id="sqFc5" style="background:#888" onclick="setSQFrameColor('#888',5)"
+                    title="Prata"></button>
+                  <button class="frame-color-btn" id="sqFc6" style="background:#000" onclick="setSQFrameColor('#000',6)"
+                    title="Preto"></button>
+                  <input type="color" id="sqFrameColorPicker" value="#3C2F1E"
+                    oninput="sqFrameColor=this.value;clearSQFrameActive();renderFrame()"
+                    style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px">
+                </div>
+              </div>
+            </div>
+            <div class="canvas-card">
+              <div class="card-h">Passepartout</div>
+              <label class="pp-toggle" style="margin-bottom:12px">
+                <input type="checkbox" id="sqPpEnabled" onchange="renderFrame()">
+                <span style="font-size:13px;color:var(--brown);font-weight:600">Ativar Passepartout</span>
+              </label>
+              <div class="sl-row">
+                <div class="sl-label">Borda <span id="sqPpSizeL">3cm</span></div>
+                <input type="range" id="sqPpSize" min="0.5" max="20" value="3" step="0.5"
+                  oninput="document.getElementById('sqPpSizeL').textContent=this.value+'cm';renderFrame()">
+              </div>
+              <div style="margin-top:10px">
+                <div
+                  style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gray);font-weight:600;margin-bottom:8px">
+                  Cor do Passepartout</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                  <div class="pp-swatch active" id="sqPpSw0" style="background:#FFFFFF;border:1px solid #ccc"
+                    onclick="setSQPpColor('#FFFFFF',0)" title="Branco"></div>
+                  <div class="pp-swatch" id="sqPpSw1" style="background:#F5F0E8" onclick="setSQPpColor('#F5F0E8',1)"
+                    title="Off-white"></div>
+                  <div class="pp-swatch" id="sqPpSw2" style="background:#E8E0D0" onclick="setSQPpColor('#E8E0D0',2)"
+                    title="Creme"></div>
+                  <div class="pp-swatch" id="sqPpSw3" style="background:#000000" onclick="setSQPpColor('#000000',3)"
+                    title="Preto"></div>
+                  <div class="pp-swatch" id="sqPpSw4" style="background:#B8903C" onclick="setSQPpColor('#B8903C',4)"
+                    title="Dourado"></div>
+                  <div class="pp-swatch" id="sqPpSw5" style="background:#8A5F2B" onclick="setSQPpColor('#8A5F2B',5)"
+                    title="Cobre"></div>
+                  <div class="pp-swatch" id="sqPpSw6" style="background:#888888" onclick="setSQPpColor('#888888',6)"
+                    title="Cinza"></div>
+                  <input type="color" id="sqPpColorPicker" value="#FFFFFF"
+                    oninput="sqPpColor=this.value;clearSQPpActive();renderFrame()"
+                    style="width:26px;height:26px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:1px">
+                </div>
+              </div>
+            </div>
+            <div class="canvas-card">
+              <div class="card-h">Fundo da Cena</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <button class="frame-color-btn active" id="sqBg0" style="background:#E8EDF2"
+                  onclick="setSQBg('#E8EDF2',0)" title="Cinza claro"></button>
+                <button class="frame-color-btn" id="sqBg1" style="background:#F5F0E8" onclick="setSQBg('#F5F0E8',1)"
+                  title="Off-white"></button>
+                <button class="frame-color-btn" id="sqBg2" style="background:#2C2C2C" onclick="setSQBg('#2C2C2C',2)"
+                  title="Carvão"></button>
+                <button class="frame-color-btn" id="sqBg3" style="background:#1A3051" onclick="setSQBg('#1A3051',3)"
+                  title="Azul marinho"></button>
+                <button class="frame-color-btn" id="sqBg4" style="background:#FFFFFF;border:1px solid #ccc"
+                  onclick="setSQBg('#FFFFFF',4)" title="Branco"></button>
+                <input type="color" id="sqBgPicker" value="#E8EDF2"
+                  oninput="sqBgColor=this.value;clearSQBgActive();renderFrame()"
+                  style="width:32px;height:32px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULAÇÃO DE AMBIENTE -->
+  <div class="section" id="tab-simulador">
+    <div class="page">
+      <div class="sh">
+        <h2>🏠 Simulação de Ambiente</h2>
+        <p>Escolha um ambiente pré-definido ou carregue sua própria foto de parede.</p>
+      </div>
+      <div style="margin-bottom:24px">
+        <div
+          style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gray);font-weight:700;margin-bottom:14px">
+          Ambientes Pré-definidos</div>
+        <div
+          style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--brown2);margin-bottom:10px">
+          🛋 Sala de Estar</div>
+        <div class="room-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+          <div class="room-thumb" onclick="loadPresetRoom('sala1')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/sala1.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Sala Clássica">
+            <div class="room-label">Sala Clássica</div>
+          </div>
+          <div class="room-thumb" onclick="loadPresetRoom('sala2')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/sala2.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Sala Moderna">
+            <div class="room-label">Sala Moderna</div>
+          </div>
+          <div class="room-thumb" onclick="loadPresetRoom('sala3')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/sala3.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Sala Industrial">
+            <div class="room-label">Sala Industrial</div>
+          </div>
+          <div class="room-thumb" onclick="loadPresetRoom('sala4')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/sala4.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Sala Minimalista">
+            <div class="room-label">Sala Minimalista</div>
+          </div>
+        </div>
+        <div
+          style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--brown2);margin-bottom:10px">
+          🛏 Quartos &amp; Ambientes</div>
+        <div class="room-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+          <div class="room-thumb" onclick="loadPresetRoom('qcasal')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/qcasal.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Quarto Casal">
+            <div class="room-label">Casal</div>
+          </div>
+          <div class="room-thumb" onclick="loadPresetRoom('qhospede')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/qhospede.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Quarto Hóspede">
+            <div class="room-label">Hóspede</div>
+          </div>
+          <div class="room-thumb" onclick="loadPresetRoom('qcrianca')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/qcrianca.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Quarto Criança">
+            <div class="room-label">Criança</div>
+          </div>
+          <div class="room-thumb" onclick="loadPresetRoom('gourmet')">
+            <img src="{{ url_for('static', filename='assets/img/rooms/gourmet.jpg') }}"
+              onerror="this.parentNode.classList.add('no-img')" alt="Área Gourmet">
+            <div class="room-label">Área Gourmet</div>
+          </div>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="canvas-card" style="padding:14px">
+          <div class="wall-stage" id="wPrev">
+            <div class="ph" id="wPh">
+              <div class="ico">🏠</div>
+              <p>Escolha um ambiente acima ou<br>carregue sua própria foto.<br>Depois carregue a imagem do quadro.</p>
+            </div>
+            <canvas id="wallCanvas" style="display:none"></canvas>
+          </div>
+        </div>
+        <div class="canvas-card">
+          <div class="card-h" style="margin-bottom:14px">Carregar Imagens</div>
+          <button class="wall-btn" onclick="document.getElementById('wEnv').click()">📷 Foto da Parede /
+            Ambiente</button>
+          <input type="file" id="wEnv" accept="image/*" style="display:none" onchange="loadEnv(event)">
+          <button class="wall-btn" onclick="document.getElementById('wArt').click()">🖼️ Imagem do Quadro</button>
+          <input type="file" id="wArt" accept="image/*" style="display:none" onchange="loadArt(event)">
+          <div id="wControls" style="display:none">
+            <div class="card-h" style="margin:18px 0 12px">Ajustar o Quadro</div>
+            <div style="margin-bottom:14px">
+              <div class="sl-label">Cor da Moldura</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button onclick="setWallFrameColor('#ffffff')"
+                  style="width:30px;height:30px;background:#ffffff;border:1px solid #ccc;border-radius:4px"
+                  title="Branco"></button>
+                <button onclick="setWallFrameColor('#C9A97F')"
+                  style="width:30px;height:30px;background:#C9A97F;border:1px solid #aaa;border-radius:4px"
+                  title="Marrom Claro"></button>
+                <button onclick="setWallFrameColor('#3C2F1E')"
+                  style="width:30px;height:30px;background:#3C2F1E;border:1px solid #000;border-radius:4px"
+                  title="Marrom Escuro"></button>
+                <button onclick="setWallFrameColor('#B8903C')"
+                  style="width:30px;height:30px;background:#B8903C;border:1px solid #9A7D32;border-radius:4px"
+                  title="Dourado"></button>
+                <button onclick="setWallFrameColor('#8A5F2B')"
+                  style="width:30px;height:30px;background:#8A5F2B;border:1px solid #6E4B21;border-radius:4px"
+                  title="Cobre"></button>
+                <button onclick="setWallFrameColor('#888888')"
+                  style="width:30px;height:30px;background:#888;border:1px solid #666;border-radius:4px"
+                  title="Prata"></button>
+                <button onclick="setWallFrameColor('#000000')"
+                  style="width:30px;height:30px;background:#000;border:1px solid #333;border-radius:4px"
+                  title="Preto"></button>
+                <button onclick="setWallFrameColor('')"
+                  style="width:30px;height:30px;background:transparent;border:1px dashed #ccc;border-radius:4px"
+                  title="Sem moldura"></button>
+              </div>
+            </div>
+            <div class="sl-row">
+              <div class="sl-label">Largura<span id="wWL">80cm</span></div><input type="range" id="wW" min="10"
+                max="250" value="80" oninput="renderWall()">
+            </div>
+            <div class="sl-row">
+              <div class="sl-label">Altura<span id="wHL">60cm</span></div><input type="range" id="wH" min="10" max="200"
+                value="60" oninput="renderWall()">
+            </div>
+            <div class="sl-row">
+              <div class="sl-label">Posição Horizontal<span id="wXL">50%</span></div><input type="range" id="wX" min="5"
+                max="95" value="50" oninput="renderWall()">
+            </div>
+            <div class="sl-row">
+              <div class="sl-label">Posição Vertical<span id="wYL">38%</span></div><input type="range" id="wY" min="5"
+                max="90" value="38" oninput="renderWall()">
+            </div>
+            <div class="sl-row">
+              <div class="sl-label">Sombra<span id="wSL">Média</span></div><input type="range" id="wS" min="0" max="3"
+                value="2" step="1" oninput="renderWall()">
+            </div>
+            <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border2)">
+              <div class="card-h" style="margin-bottom:10px">Passepartout</div>
+              <label class="pp-toggle" style="margin-bottom:12px">
+                <input type="checkbox" id="ppEnabled" onchange="togglePP()">
+                <span style="font-size:13px;color:var(--brown);font-weight:600">Ativar Passepartout</span>
+              </label>
+              <div id="ppControls" style="display:none;margin-top:10px">
+                <div class="field-row" style="margin-top:0;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                  <div class="field" style="min-width:90px">
+                    <label>Borda (cm)</label>
+                    <input type="number" id="ppSize" value="3" min="0.5" max="30" step="0.5" oninput="renderWall()"
+                      style="width:100%;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:15px;padding:8px 10px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif">
+                  </div>
+                  <div class="field" style="min-width:90px">
+                    <label>Cor</label>
+                    <input type="color" id="ppColorPicker" value="#FFFFFF" oninput="ppColor=this.value;renderWall()"
+                      style="width:100%;height:40px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px">
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+                  <div class="pp-swatch active" id="ppSw0" style="background:#FFFFFF;border:1px solid #ccc"
+                    onclick="setPPColor('#FFFFFF',0)" title="Branco"></div>
+                  <div class="pp-swatch" id="ppSw1" style="background:#F5F0E8" onclick="setPPColor('#F5F0E8',1)"
+                    title="Off-white"></div>
+                  <div class="pp-swatch" id="ppSw2" style="background:#E8E0D0" onclick="setPPColor('#E8E0D0',2)"
+                    title="Creme"></div>
+                  <div class="pp-swatch" id="ppSw3" style="background:#000000" onclick="setPPColor('#000000',3)"
+                    title="Preto"></div>
+                  <div class="pp-swatch" id="ppSw4" style="background:#B8903C" onclick="setPPColor('#B8903C',4)"
+                    title="Dourado"></div>
+                  <div class="pp-swatch" id="ppSw5" style="background:#8A5F2B" onclick="setPPColor('#8A5F2B',5)"
+                    title="Cobre"></div>
+                  <div class="pp-swatch" id="ppSw6" style="background:#888888" onclick="setPPColor('#888888',6)"
+                    title="Cinza"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <button class="btn dark" style="flex:1" onclick="dlWall('jpg')">⬇ Baixar JPEG</button>
+              <button class="btn dark" style="flex:1" onclick="dlWall('pdf')">⬇ Baixar PDF</button>
+            </div>
+            <div class="info-box" style="margin-top:10px">
+              <p><strong>Dica:</strong> Fotografe a parede de frente, com boa iluminação, para uma simulação mais
+                realista.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+{%- if false -%}
+<!-- ASSISTENTE IA -->
+<div class="section" id="tab-assistente">
+<style>
+.chat-layout{display:grid;grid-template-columns:1fr 420px;gap:20px;max-width:1100px;margin:0 auto;padding:36px 48px 72px}
+@media(max-width:960px){.chat-layout{grid-template-columns:1fr;padding:20px 16px 48px}}
+.chat-panel{background:var(--white);border:1px solid var(--border2);border-radius:8px;display:flex;flex-direction:column;height:620px}
+.chat-header{padding:16px 20px;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:10px}
+.chat-avatar{width:36px;height:36px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.chat-title{font-size:13px;font-weight:700;color:var(--brown);letter-spacing:.5px}
+.chat-status{font-size:11px;color:#2E7D52;font-weight:600}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.msg{max-width:82%;padding:11px 14px;border-radius:12px;font-size:13px;line-height:1.6;animation:msgIn .2s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.msg.bot{background:var(--cream2);color:var(--brown);border-bottom-left-radius:4px;align-self:flex-start}
+.msg.user{background:var(--gold);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+.msg-typing{display:flex;gap:4px;align-items:center;padding:14px 16px;background:var(--cream2);border-radius:12px;border-bottom-left-radius:4px;align-self:flex-start;width:56px}
+.msg-typing span{width:7px;height:7px;background:var(--gray);border-radius:50%;animation:dot .9s infinite}
+.msg-typing span:nth-child(2){animation-delay:.2s}
+.msg-typing span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-input-area{padding:12px 16px;border-top:1px solid var(--border2);display:flex;gap:8px}
+.chat-input{flex:1;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:13px;padding:10px 14px;border-radius:6px;outline:none;font-family:'Avenir','Nunito',sans-serif;resize:none;height:44px;transition:border-color .2s;line-height:1.4}
+.chat-input:focus{border-color:var(--gold);background:var(--white)}
+.chat-send{background:var(--gold);color:#fff;border:none;width:44px;height:44px;border-radius:6px;cursor:pointer;font-size:18px;transition:background .2s;flex-shrink:0}
+.chat-send:hover{background:var(--brown)}
+.chat-send:disabled{background:var(--border);cursor:not-allowed}
+.chat-suggestions{padding:8px 16px 12px;display:flex;gap:6px;flex-wrap:wrap}
+.chat-sug{background:var(--white);border:1px solid var(--border);color:var(--brown2);font-size:11px;padding:5px 10px;border-radius:20px;cursor:pointer;font-family:'Avenir','Nunito',sans-serif;transition:all .15s;font-weight:600}
+.chat-sug:hover{border-color:var(--gold);color:var(--gold);background:#FFF8F8}
+.chat-simulator{background:var(--white);border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.chat-sim-stage{background:#E8EDF2;display:flex;align-items:center;justify-content:center;padding:20px;min-height:280px}
+#chatFrameCanvas{max-width:100%;max-height:260px;display:block;border-radius:2px}
+.chat-sim-controls{padding:14px 18px;display:flex;flex-direction:column;gap:10px}
+.chat-sim-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chat-sim-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray);font-weight:600;min-width:70px}
+.chat-color-btn{width:24px;height:24px;border-radius:4px;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0}
+.chat-color-btn:hover,.chat-color-btn.active{border-color:var(--gold);transform:scale(1.15)}
+.chat-sim-dl{display:flex;gap:8px;padding:0 18px 16px}
+.chat-sim-dl button{flex:1}
+</style>
+<div class="chat-layout">
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="chat-avatar">🤖</div>
+      <div>
+        <div class="chat-title">Assistente Fast Frame</div>
+        <div class="chat-status">&#9679; Online</div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="chat-sug" onclick="chatSuggest(this)">Moldura dourada classica</button>
+      <button class="chat-sug" onclick="chatSuggest(this)">Moldura preta fina com passepartout branco</button>
+      <button class="chat-sug" onclick="chatSuggest(this)">Quadro 80x60 sem moldura</button>
+      <button class="chat-sug" onclick="chatSuggest(this)">Estilo classico com passepartout creme</button>
+      <button class="chat-sug" onclick="chatSuggest(this)">Moldura de madeira escura grossa</button>
+    </div>
+    <div class="chat-input-area">
+      <textarea class="chat-input" id="chatInput" placeholder="Descreva o quadro que voce deseja..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMsg()}"
+        oninput="this.style.height='44px';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      <button class="chat-send" id="chatSendBtn" onclick="sendChatMsg()" title="Enviar">&#10148;</button>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="chat-simulator">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border2)">
+        <div class="card-h">Simulacao ao Vivo</div>
+      </div>
+      <div class="chat-sim-stage">
+        <div id="chatSimPlaceholder" style="text-align:center;color:var(--gray);font-size:13px;line-height:1.8;padding:20px">
+          <div style="font-size:36px;margin-bottom:10px;opacity:.4">🖼️</div>
+          Carregue uma imagem ou converse com<br>o assistente para ver a simulacao.
+        </div>
+        <canvas id="chatFrameCanvas" style="display:none"></canvas>
+      </div>
+      <div style="padding:12px 18px;border-top:1px solid var(--border2)">
+        <button class="wall-btn" style="margin-bottom:0" onclick="document.getElementById('chatImgFile').click()">🖼️ Carregar imagem para simular</button>
+        <input type="file" id="chatImgFile" accept="image/*" style="display:none" onchange="loadChatImg(event)">
+      </div>
+      <div class="chat-sim-controls" id="chatSimControls" style="display:none">
+        <div class="chat-sim-row">
+          <span class="chat-sim-label">Moldura</span>
+          <button class="chat-color-btn active" id="cfb0" style="background:#3C2F1E" onclick="setChatFrame('#3C2F1E',0)" title="Madeira escura"></button>
+          <button class="chat-color-btn" id="cfb1" style="background:#C9A97F" onclick="setChatFrame('#C9A97F',1)" title="Madeira clara"></button>
+          <button class="chat-color-btn" id="cfb2" style="background:#B8903C" onclick="setChatFrame('#B8903C',2)" title="Dourado"></button>
+          <button class="chat-color-btn" id="cfb3" style="background:#fff;border:1px solid #ccc" onclick="setChatFrame('#fff',3)" title="Branco"></button>
+          <button class="chat-color-btn" id="cfb4" style="background:#888" onclick="setChatFrame('#888',4)" title="Prata"></button>
+          <button class="chat-color-btn" id="cfb5" style="background:#000" onclick="setChatFrame('#000',5)" title="Preto"></button>
+          <input type="color" id="chatFrameColorPicker" value="#3C2F1E" oninput="chatState.frameColor=this.value;clearChatFrameActive();renderChatFrame()" style="width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:1px">
+        </div>
+        <div class="chat-sim-row">
+          <span class="chat-sim-label">Espessura</span>
+          <input type="range" id="chatFrameWSlider" min="0" max="12" value="3" step="0.5" oninput="chatState.frameW=+this.value;document.getElementById('chatFrameWLabel').textContent=this.value+'cm';renderChatFrame()" style="flex:1">
+          <span id="chatFrameWLabel" style="font-size:11px;color:var(--brown);font-weight:700;min-width:30px">3cm</span>
+        </div>
+        <div class="chat-sim-row">
+          <span class="chat-sim-label">Passepartout</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--brown);cursor:pointer">
+            <input type="checkbox" id="chatPpCheck" onchange="chatState.ppOn=this.checked;renderChatFrame()" style="accent-color:var(--gold)"> Ativar
+          </label>
+          <input type="range" id="chatPpSlider" min="1" max="15" value="3" step="0.5" oninput="chatState.ppSize=+this.value;document.getElementById('chatPpLabel').textContent=this.value+'cm';renderChatFrame()" style="flex:1">
+          <span id="chatPpLabel" style="font-size:11px;color:var(--brown);font-weight:700;min-width:30px">3cm</span>
+        </div>
+        <div class="chat-sim-row">
+          <span class="chat-sim-label">Cor PP</span>
+          <button class="chat-color-btn active" id="cppb0" style="background:#fff;border:1px solid #ccc" onclick="setChatPp('#fff',0)" title="Branco"></button>
+          <button class="chat-color-btn" id="cppb1" style="background:#F5F0E8" onclick="setChatPp('#F5F0E8',1)" title="Off-white"></button>
+          <button class="chat-color-btn" id="cppb2" style="background:#E8E0D0" onclick="setChatPp('#E8E0D0',2)" title="Creme"></button>
+          <button class="chat-color-btn" id="cppb3" style="background:#000" onclick="setChatPp('#000',3)" title="Preto"></button>
+          <button class="chat-color-btn" id="cppb4" style="background:#B8903C" onclick="setChatPp('#B8903C',4)" title="Dourado"></button>
+          <input type="color" id="chatPpColorPicker" value="#FFFFFF" oninput="chatState.ppColor=this.value;clearChatPpActive();renderChatFrame()" style="width:24px;height:24px;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:1px">
+        </div>
+        <div class="chat-sim-row">
+          <span class="chat-sim-label">Tamanho</span>
+          <input type="number" id="chatW" value="80" min="10" max="300" oninput="chatState.w=+this.value;renderChatFrame()" style="width:64px;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:13px;padding:5px 8px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif">
+          <span style="font-size:12px;color:var(--gray)">x</span>
+          <input type="number" id="chatH" value="60" min="10" max="300" oninput="chatState.h=+this.value;renderChatFrame()" style="width:64px;background:var(--cream2);border:1px solid var(--border);color:var(--brown);font-size:13px;padding:5px 8px;border-radius:4px;outline:none;font-family:'Avenir','Nunito',sans-serif">
+          <span style="font-size:12px;color:var(--gray)">cm</span>
+        </div>
+      </div>
+      <div class="chat-sim-dl" id="chatSimDl" style="display:none">
+        <button class="btn" style="flex:1;font-size:11px" onclick="dlChatFrame('pdf')">&#8595; PDF</button>
+        <button class="btn dark" style="flex:1;font-size:11px" onclick="dlChatFrame('jpg')">&#8595; JPEG</button>
+      </div>
+    </div>
+    <div class="canvas-card" id="chatQuadroInfo" style="display:none;font-size:12px;color:var(--gray);line-height:2"></div>
+  </div>
+</div>
+</div>
+
+{%- endif -%}
+<footer>
+    <div>
+      <div class="flogo">Fast <span>Frame</span> Sorocaba</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:5px;letter-spacing:1px">Ferramenta de Qualidade
+        de Impressão</div>
+    </div>
+    <div class="finfo">
+      Av Barão de Tatuí, 1584 Vergueiro, Sorocaba SP<br>
+      <a href="tel:15991355747">(15) 99135-5747</a> &nbsp;·&nbsp; <a
+        href="https://fastframesorocaba.com.br">fastframesorocaba.com.br</a>
+    </div>
+  </footer>
+
+  <div class="toast" id="toast"></div>
+
+  <div id="previewModal" class="modal-overlay" style="display:none">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Prévia Ampliada do Quadro</h3>
+        <button class="modal-close" onclick="closePreviewModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <canvas id="largePreviewCanvas"></canvas>
+        <div id="previewModalSize"
+          style="text-align:center;font-size:15px;font-weight:700;color:var(--brown);margin-top:12px;font-family:'Avenir Next','Nunito',Georgia,serif">
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <button class="btn" <button class="btn" onclick="closePreviewModal()">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+<script src="{{ url_for('static', filename='assets/js/script.js') }}"></script>
+</body>
+
+</html>
